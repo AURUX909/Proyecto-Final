@@ -1,18 +1,21 @@
 package views;
 
 import controllers.interfaces.*;
-import models.*;
-import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Arrays;
 import java.util.List;
+import javax.swing.*;
+import models.*;
 
 public class MazeSolverUI extends JFrame {
-    private JFrame frame;
+
     private JPanel mazePanel;
     private JTextField startRowField, startColField, endRowField, endColField;
     private JCheckBox delayCheckBox; // CheckBox para Delay
     private boolean[][] grid;
+    private Cell startCell = null;
+    private Cell endCell = null;
 
     public MazeSolverUI() {
         initializeMaze();
@@ -20,13 +23,17 @@ public class MazeSolverUI extends JFrame {
     }
 
     private void initializeMaze() {
-        grid = new boolean[][]{
-                {true, true, true, true, true},
-                {true, false, false, true, true},
-                {true, false, true, true, false},
-                {true, true, true, false, true},
-                {false, true, true, true, true}
-        };
+        // Ventana emergente para configurar el tamaño del laberinto
+        String inputRows = JOptionPane.showInputDialog(this, "Ingrese el número de filas:", "Configuración del Laberinto", JOptionPane.PLAIN_MESSAGE);
+        String inputCols = JOptionPane.showInputDialog(this, "Ingrese el número de columnas:", "Configuración del Laberinto", JOptionPane.PLAIN_MESSAGE);
+
+        int rows = inputRows == null || inputRows.isEmpty() ? 5 : Integer.parseInt(inputRows);
+        int cols = inputCols == null || inputCols.isEmpty() ? 5 : Integer.parseInt(inputCols);
+
+        grid = new boolean[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            Arrays.fill(grid[i], true); // Todas las celdas son transitables inicialmente
+        }
     }
 
     private void buildUI() {
@@ -82,17 +89,37 @@ public class MazeSolverUI extends JFrame {
             for (int j = 0; j < grid[0].length; j++) {
                 JPanel cell = new JPanel();
                 cell.setPreferredSize(new Dimension(60, 60));
+                cell.setBackground(grid[i][j] ? Color.WHITE : Color.BLACK);
 
-                if (!grid[i][j]) {
-                    cell.setBackground(Color.BLACK); // Celda bloqueada
-                } else {
-                    cell.setBackground(Color.WHITE); // Celda transitable
-                    JLabel label = new JLabel((i + 1) + "," + (j + 1));
-                    label.setForeground(Color.BLACK);
-                    cell.add(label);
-                }
+                JLabel label = new JLabel((i + 1) + "," + (j + 1), SwingConstants.CENTER);
+                label.setForeground(Color.BLACK);
+                cell.add(label);
 
-                cell.setBorder(BorderFactory.createLineBorder(new Color(75, 85, 99)));
+                final int row = i;
+                final int col = j;
+
+                cell.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        if (e.getButton() == MouseEvent.BUTTON1) { // Botón izquierdo
+                            if (startCell == null) {
+                                startCell = new Cell(row, col);
+                                cell.setBackground(Color.BLUE);
+                                startRowField.setText(String.valueOf(row + 1));
+                                startColField.setText(String.valueOf(col + 1));
+                            } else if (endCell == null && !startCell.equals(new Cell(row, col))) {
+                                endCell = new Cell(row, col);
+                                cell.setBackground(Color.BLUE);
+                                endRowField.setText(String.valueOf(row + 1));
+                                endColField.setText(String.valueOf(col + 1));
+                            } else {
+                                grid[row][col] = !grid[row][col]; // Alternar estado
+                                cell.setBackground(grid[row][col] ? Color.WHITE : Color.BLACK);
+                            }
+                        }
+                    }
+                });
+
                 mazePanel.add(cell);
             }
         }
@@ -108,8 +135,10 @@ public class MazeSolverUI extends JFrame {
         startColField = createTextField("1");
         endRowField = createTextField("5");
         endColField = createTextField("5");
-        delayCheckBox = new JCheckBox();
+
+        delayCheckBox = new JCheckBox("Mostrar Tiempo");
         delayCheckBox.setBackground(new Color(55, 65, 81));
+        delayCheckBox.setForeground(Color.WHITE);
 
         // Agregar campos con etiquetas
         controlPanel.add(createLabeledField("Fila de inicio:", startRowField));
@@ -120,7 +149,7 @@ public class MazeSolverUI extends JFrame {
         controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
         controlPanel.add(createLabeledField("Columna de fin:", endColField));
         controlPanel.add(Box.createRigidArea(new Dimension(0, 10)));
-        controlPanel.add(createLabeledField("Delay:", delayCheckBox));
+        controlPanel.add(createLabeledField("Mostrar Tiempo:", delayCheckBox));
 
         return controlPanel;
     }
@@ -136,21 +165,16 @@ public class MazeSolverUI extends JFrame {
             button.setForeground(Color.WHITE);
 
             switch (algorithm) {
-                case "BFS":
+                case "BFS" ->
                     button.addActionListener(e -> solveMaze(new MazeSolverBFS()));
-                    break;
-                case "DFS":
+                case "DFS" ->
                     button.addActionListener(e -> solveMaze(new MazeSolverDFS()));
-                    break;
-                case "Recursivo":
+                case "Recursivo" ->
                     button.addActionListener(e -> solveMaze(new MazeSolverRecursivo()));
-                    break;
-                case "Cache":
+                case "Cache" ->
                     button.addActionListener(e -> solveMaze(new MazeSolverCache()));
-                    break;
-                case "Reset":
+                case "Reset" ->
                     button.addActionListener(e -> resetMaze());
-                    break;
             }
 
             panel.add(button);
@@ -208,7 +232,7 @@ public class MazeSolverUI extends JFrame {
                 displayPath(path, solver.getClass().getSimpleName(), duration, path.size());
                 JOptionPane.showMessageDialog(this, "Camino encontrado con éxito.", "Resultado", JOptionPane.INFORMATION_MESSAGE);
             }
-        } catch (Exception e) {
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
             JOptionPane.showMessageDialog(this, "Error en la configuración: " + e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -227,6 +251,14 @@ public class MazeSolverUI extends JFrame {
         for (Cell cell : path) {
             JPanel cellPanel = (JPanel) mazePanel.getComponent(cell.row * grid[0].length + cell.col);
             cellPanel.setBackground(pathColor);
+
+            if (delayCheckBox.isSelected()) {
+                try {
+                    Thread.sleep(200); // Retraso para visualizar paso a paso
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                }
+            }
         }
 
         mazePanel.revalidate();
@@ -234,31 +266,31 @@ public class MazeSolverUI extends JFrame {
 
         // Mostrar métricas
         JOptionPane.showMessageDialog(this,
-                "Algoritmo: " + algorithm +
-                        "\nTiempo: " + time + "ms" +
-                        "\nPasos: " + steps,
+                "Algoritmo: " + algorithm
+                + "\nTiempo: " + time + "ms"
+                + "\nPasos: " + steps,
                 "Métricas", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private Color getPathColor(String algorithm) {
-        switch (algorithm) {
-            case "MazeSolverBFS":
-                return Color.GREEN; // Ruta óptima
-            case "MazeSolverDFS":
-                return Color.YELLOW; // Ruta menos óptima
-            case "MazeSolverRecursivo":
-                return Color.ORANGE; // Ruta intermedia
-            case "MazeSolverCache":
-                return Color.RED; // Ruta ineficiente
-            default:
-                return Color.GRAY; // Por defecto
-        }
+        return switch (algorithm) {
+            case "MazeSolverBFS" ->
+                Color.GREEN;  // Ruta óptima
+            case "MazeSolverDFS" ->
+                Color.YELLOW; // Ruta menos óptima
+            case "MazeSolverRecursivo" ->
+                Color.ORANGE; // Ruta intermedia
+            case "MazeSolverCache" ->
+                Color.RED;  // Ruta ineficiente
+            default ->
+                Color.GRAY;               // Por defecto
+        };
     }
 
     private boolean isValidCell(Cell cell) {
-        return cell.row >= 0 && cell.row < grid.length &&
-               cell.col >= 0 && cell.col < grid[0].length &&
-               grid[cell.row][cell.col];
+        return cell.row >= 0 && cell.row < grid.length
+                && cell.col >= 0 && cell.col < grid[0].length
+                && grid[cell.row][cell.col];
     }
 
     private void resetMaze() {
@@ -276,6 +308,10 @@ public class MazeSolverUI extends JFrame {
 
         // Reiniciar el CheckBox
         delayCheckBox.setSelected(false);
+
+        // Reiniciar las celdas de inicio y fin
+        startCell = null;
+        endCell = null;
     }
 
     public static void main(String[] args) {

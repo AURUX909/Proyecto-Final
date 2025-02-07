@@ -1,19 +1,19 @@
+
 import controllers.interfaces.*;
-import models.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Scanner;
+import models.*;
 
 public class App {
+
     public static void main(String[] args) {
         // Definición del laberinto
         boolean[][] laberinto = {
             {true, true, true, true},
             {false, true, true, true},
             {true, true, false, false},
-            {true, true, true, true},
-        };
-
+            {true, true, true, true},};
         Maze maze = new Maze(laberinto);
         System.out.println("Laberinto cargado:");
         maze.printMaze();
@@ -24,10 +24,10 @@ public class App {
 
         // Lista de solucionadores disponibles
         List<MazeSolver> soluciones = Arrays.asList(
-            new MazeSolverRecursivo(),
-            new MazeSolverBFS(),
-            new MazeSolverDFS(),
-            new MazeSolverCache()
+                new MazeSolverRecursivo(),
+                new MazeSolverBFS(),
+                new MazeSolverDFS(),
+                new MazeSolverCache()
         );
 
         // Menú para seleccionar el algoritmo
@@ -37,8 +37,8 @@ public class App {
             System.out.println("2: BFS");
             System.out.println("3: DFS");
             System.out.println("4: Cache");
-
             int opcion = scanner.nextInt();
+
             if (opcion < 1 || opcion > soluciones.size()) {
                 System.out.println("Opción no válida");
                 return;
@@ -56,7 +56,8 @@ public class App {
                 for (Cell cell : path) {
                     System.out.println(cell);
                 }
-                maze.printMazeSolver(path);
+                // Aquí se corrige el método printMazeSolver por printMazeWithPath
+                maze.printMazeWithPath(path);
             }
         } catch (Exception e) {
             System.out.println("Error: " + e.getMessage());
